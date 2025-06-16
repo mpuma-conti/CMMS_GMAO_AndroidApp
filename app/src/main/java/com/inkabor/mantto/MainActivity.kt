@@ -1,15 +1,20 @@
-package com.inkabor.mantto;
+package com.inkabor.mantto
 
 import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
 import androidx.appcompat.app.AppCompatActivity
-import com.inkabor.mantto.R
 import android.os.Build
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
+import android.widget.ProgressBar
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var webView: WebView
+    private lateinit var progressBar: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,18 +26,20 @@ class MainActivity : AppCompatActivity() {
 
         // Oculta la barra de estado (notificaciones)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.hide(android.view.WindowInsets.Type.statusBars())
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
         } else {
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
             )
         }
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN
 
+        // Referencias
+        webView = findViewById(R.id.webview)
+        progressBar = findViewById(R.id.progressBar)
 
-
-        val webView = findViewById<WebView>(R.id.webview)
-        // Configuraciones necesarias
+        // Configuración del WebView
         val webSettings = webView.settings
         webSettings.javaScriptEnabled = true
         webSettings.domStorageEnabled = true
@@ -43,11 +50,35 @@ class MainActivity : AppCompatActivity() {
         webSettings.loadWithOverviewMode = true
         webSettings.setSupportZoom(true)
 
-        // Esto evita que los enlaces se abran fuera del WebView
-        webView.webViewClient = WebViewClient()
+        // Para que cargue dentro del WebView y no en navegador externo
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                progressBar.visibility = View.VISIBLE
+            }
 
-// Cargar URL
+            override fun onPageFinished(view: WebView?, url: String?) {
+                progressBar.visibility = View.GONE
+            }
+        }
+
+        // Control de progreso para la barra
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                progressBar.progress = newProgress
+            }
+        }
+
+        // Carga inicial
         webView.loadUrl("https://save-boxing-disciplines-apparently.trycloudflare.com")
+    }
+
+    override fun onBackPressed() {
+        // Si hay historial, volver atrás en WebView
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 
     override fun finish() {
